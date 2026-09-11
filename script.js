@@ -1,4 +1,4 @@
-// دالة لتحويل الأرقام العربية إلى إنجليزية
+// دالة تحويل الأرقام العربية إلى إنجليزية
 function parseArabicNumbers(str) {
     const arabicNumbers = [/٠/g, /١/g, /٢/g, /٣/g, /٤/g, /٥/g, /٦/g, /٧/g, /٨/g, /٩/g];
     if (typeof str === 'string') {
@@ -18,12 +18,13 @@ document.getElementById('botForm').addEventListener('submit', async function(e) 
     const statusBox = document.getElementById('statusBox');
     const statusText = document.getElementById('statusText');
 
-    // تحويل رقم الميناء والـ IP (إذا احتوى أرقاماً عربية) إلى أرقام إنجليزية
+    // تحويل الـ Port والـ IP لأرقام إنجليزية
     const cleanPort = parseInt(parseArabicNumbers(rawPort));
     const cleanIp = parseArabicNumbers(ip);
 
     statusBox.classList.remove('hidden');
     statusText.innerText = "⏳ جاري إرسال الطلب للخادم...";
+    statusText.style.color = "#ffffff";
 
     if (isNaN(cleanPort)) {
         statusText.innerText = "❌ يرجى إدخال رقم ميناء (Port) صحيح";
@@ -32,7 +33,8 @@ document.getElementById('botForm').addEventListener('submit', async function(e) 
     }
 
     try {
-        const response = await fetch('http://localhost:3000/api/start-bot', {
+        // الربط المباشر مع سيرفر Render الخاص بك
+        const response = await fetch('https://minecraft-bot-servers-bedrock.onrender.com/api/start-bot', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ ip: cleanIp, port: cleanPort, botName })
@@ -48,7 +50,7 @@ document.getElementById('botForm').addEventListener('submit', async function(e) 
             statusText.style.color = "#f87171";
         }
     } catch (error) {
-        statusText.innerText = "⚠️ تعذر الاتصال بالخادم الخلفي (تأكد من تشغيل server.js)";
+        statusText.innerText = "⚠️ تعذر الاتصال بالخادم (قد يحتاج Render بضع ثوانٍ للاستيقاظ إذا كان خاملاً)";
         statusText.style.color = "#fbbf24";
     }
 });
