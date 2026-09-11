@@ -13,36 +13,64 @@ app.post('/api/start-bot', (req, res) => {
         return res.status(400).json({ success: false, message: 'يرجى إدخال IP والميناء بشكل صحيح' });
     }
 
-    try {
-        console.log(`محاولة تشغيل البوت ${botName} على السيرفر: ${ip}:${port}`);
+    console.log(`[BOT] جاري الاتصال بالسيرفر: ${ip}:${port} باسم: ${botName}`);
 
-        // إنشاء الاتصال بسيرفر Bedrock
+    try {
+        // إنشاء اتصال Bedrock
         const client = bedrock.createClient({
             host: ip,
             port: parseInt(port),
-            username: botName,
-            offline: true
+            username: botName || 'AFK_Bot',
+            offline: true // لتجربة السيرفرات المفتوحة (Offline Mode)
         });
 
+        let hasResponded = false;
+
+        // عند الانضمام الفعلي للسيرفر
         client.on('join', () => {
-            console.log(`تم دخول البوت بنجاح إلى ${ip}`);
+            console.log(`[BOT SUCCESS] تم انضمام البوت بنجاح إلى ${ip}:${port}`);
+            if (!hasResponded) {
+                hasResponded = true;
+                return res.json({ 
+                    success: true, 
+                    message: `تم دخول البوت (${botName}) للعبة بنجاح وهو متصل الآن!` 
+                });
+            }
         });
 
+        // التعامل مع الأخطاء وإغلاق الاتصال
         client.on('error', (err) => {
-            console.error('خطأ في البوت:', err.message);
+            console.error('[BOT ERROR]', err.message);
+            if (!hasResponded) {
+                hasResponded = true;
+                return res.status(500).json({ 
+                    success: false, 
+                    message: `فشل دخول البوت: ${err.message}` 
+                });
+            }
         });
 
-        return res.json({ 
-            success: true, 
-            message: `تم إرسال البوت (${botName}) بنجاح للسيرفر ${ip}:${port}` 
+        client.on('disconnect', (packet) => {
+            console.log('[BOT DISCONNECTED]', packet);
         });
+
+        // في حال استغرق الاتصال أكثر من 15 ثانية دون استجابة
+        setTimeout(() => {
+            if (!hasResponded) {
+                hasResponded = true;
+                return res.status(408).json({ 
+                    success: false, 
+                    message: 'انتهت مهلة الاتصال، تأكد من أن السيرفر يعمل ويعتمد الـ IP والميناء المناسبين.' 
+                });
+            }
+        }, 15000);
 
     } catch (err) {
-        return res.status(500).json({ success: false, message: 'حدث خطأ أثناء تشغيل البوت: ' + err.message });
+        return res.status(500).json({ success: false, message: 'حدث خطأ غير متوقع: ' + err.message });
     }
 });
 
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-    console.log(`🚀 الخادم يعمل الآن على: http://localhost:${PORT}`);
+    console.log(`🚀 Server running on port ${PORT}`);
 });
