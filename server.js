@@ -1,25 +1,28 @@
 const express = require('express');
-const cors = require('cors');
+const path = require('path');
 const bedrock = require('bedrock-protocol');
 
 const app = express();
-app.use(cors());
 app.use(express.json());
 
-// مصفوفة لحفظ البوتات الشغالة في الذاكرة
-const activeBots = [];
+// تقديم ملفات الواجهة الأمامية تلقائياً
+app.use(express.static(__dirname));
+
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'index.html'));
+});
 
 app.post('/api/start-bot', (req, res) => {
     const { ip, port, botName } = req.body;
 
     if (!ip || !port) {
-        return res.status(400).json({ success: false, message: 'يرجى إدخال IP والميناء بشكل صحيح' });
+        return res.status(400).json({ success: false, message: 'يرجى إدخال IP والـ Port بشكل صحيح' });
     }
 
     const targetPort = parseInt(port) || 19132;
     const cleanBotName = botName ? botName.trim() : 'AFK_Bot';
 
-    console.log(`[BOT ATTEMPT] Connecting to ${ip}:${targetPort} as ${cleanBotName}`);
+    console.log(`[BOT REQUEST] Connecting to ${ip}:${targetPort} as ${cleanBotName}`);
 
     try {
         const client = bedrock.createClient({
@@ -27,57 +30,49 @@ app.post('/api/start-bot', (req, res) => {
             port: targetPort,
             username: cleanBotName,
             offline: true,
-            connectTimeout: 10000
+            connectTimeout: 15000
         });
 
         let responded = false;
 
         client.on('join', () => {
-            console.log(`[BOT JOINED] ${cleanBotName} joined ${ip}`);
-            
-            // حفظ البوت في القائمة لضمان عدم إغلاقه تلقائياً
-            activeBots.push(client);
-
+            console.log(`[BOT JOINED] ${cleanBotName} entered the world!`);
             if (!responded) {
                 responded = true;
                 return res.json({
                     success: true,
-                    message: `نجح الاتصال! دخل البوت (${cleanBotName}) إلى السيرفر وهو متواجد الآن.`
+                    message: `نجح الاتصال! دخل البوت (${cleanBotName}) إلى السيرفر وهو متصل الآن.`
                 });
             }
         });
 
         client.on('error', (err) => {
-            console.error(`[BOT ERROR]`, err);
+            console.error(`[BOT ERROR]`, err.message);
             if (!responded) {
                 responded = true;
                 return res.status(500).json({
                     success: false,
-                    message: `فشل الاتصال بالسيرفر: ${err.message}`
+                    message: `فشل الدخول: ${err.message}`
                 });
             }
-        });
-
-        client.on('kick', (reason) => {
-            console.log(`[BOT KICKED] Reason:`, reason);
         });
 
         setTimeout(() => {
             if (!responded) {
                 responded = true;
-                // إذا لم يستجب خلال 12 ثانية نجبر إغلاق العميل لتجنب التعليق
-                try { client.close(); } catch(e){}
                 return res.status(408).json({
                     success: false,
-                    message: 'لم يستجب السيرفر في الوقت المحدد. تأكد أن السيرفر شغال وأن خيار (Cracked) مفعل إذا كان السيرفر أوفلاين.'
+                    message: 'انتهت مهلة الاتصال. تأكد من أن السيرفر يعتمد الوضع غير الموثق (Cracked/Offline).'
                 });
             }
         }, 12000);
 
     } catch (error) {
-        return res.status(500).json({ success: false, message: 'حدث خطأ في النظام: ' + error.message });
+        return res.status(500).json({ success: false, message: 'خطأ في النظام: ' + error.message });
     }
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server listening on port ${PORT}`));
+app.listen(PORT, () => {
+    console.log(`🚀 Server running on port ${PORT}`);
+});
