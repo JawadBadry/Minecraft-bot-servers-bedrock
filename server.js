@@ -1,11 +1,15 @@
 const express = require('express');
+const cors = require('cors');
 const path = require('path');
 const bedrock = require('bedrock-protocol');
 
 const app = express();
+
+// تفعيل CORS لجميع المصادر لمنع خطأ الاتصال
+app.use(cors());
 app.use(express.json());
 
-// تقديم ملفات الواجهة الأمامية تلقائياً
+// تقديم ملفات الواجهة الأمامية
 app.use(express.static(__dirname));
 
 app.get('/', (req, res) => {
@@ -16,11 +20,11 @@ app.post('/api/start-bot', (req, res) => {
     const { ip, port, botName } = req.body;
 
     if (!ip || !port) {
-        return res.status(400).json({ success: false, message: 'يرجى إدخال IP والـ Port بشكل صحيح' });
+        return res.status(400).json({ success: false, message: 'يرجى إدخال الـ IP والـ Port بشكل صحيح' });
     }
 
     const targetPort = parseInt(port) || 19132;
-    const cleanBotName = botName ? botName.trim() : 'AFK_Bot';
+    const cleanBotName = botName ? botName.trim().replace(/\s+/g, '_') : 'AFK_Bot';
 
     console.log(`[BOT REQUEST] Connecting to ${ip}:${targetPort} as ${cleanBotName}`);
 
@@ -30,7 +34,8 @@ app.post('/api/start-bot', (req, res) => {
             port: targetPort,
             username: cleanBotName,
             offline: true,
-            connectTimeout: 15000
+            skipPing: true,
+            connectTimeout: 20000
         });
 
         let responded = false;
@@ -41,7 +46,7 @@ app.post('/api/start-bot', (req, res) => {
                 responded = true;
                 return res.json({
                     success: true,
-                    message: `نجح الاتصال! دخل البوت (${cleanBotName}) إلى السيرفر وهو متصل الآن.`
+                    message: `تم دخول البوت (${cleanBotName}) إلى السيرفر وهو متصل الآن!`
                 });
             }
         });
@@ -62,10 +67,10 @@ app.post('/api/start-bot', (req, res) => {
                 responded = true;
                 return res.status(408).json({
                     success: false,
-                    message: 'انتهت مهلة الاتصال. تأكد من أن السيرفر يعتمد الوضع غير الموثق (Cracked/Offline).'
+                    message: 'انتهت مهلة الاتصال. تأكد من أن السيرفر يعمل وتفعل فيه خيار (Cracked / Offline).'
                 });
             }
-        }, 12000);
+        }, 18000);
 
     } catch (error) {
         return res.status(500).json({ success: false, message: 'خطأ في النظام: ' + error.message });
